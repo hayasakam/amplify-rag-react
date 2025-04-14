@@ -9,11 +9,19 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  color: white;
   padding: 20px;
+  color: white;
 }
 
-section {
+.auth-controls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+.upload-section,
+.query-section,
+.response-section {
   width: 80%;
   max-width: 800px;
   margin: 20px 0;
@@ -23,29 +31,19 @@ section {
 }
 
 form {
-  margin: 20px 0;
-}
-
-textarea {
-  margin: 10px 0;
-  padding: 10px;
-  width: 90%;
-  border-radius: 4px;
-  border: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 button {
-  background-color: #61dafb;
-  border: none;
   padding: 10px 20px;
-  border-radius: 5px;
+  border: none;
+  border-radius: 4px;
+  background-color: #61dafb;
+  color: #282c34;
   cursor: pointer;
-  margin: 10px 0;
   font-size: 16px;
-}
-
-button:hover {
-  background-color: #4fa8c7;
 }
 
 button:disabled {
@@ -53,25 +51,25 @@ button:disabled {
   cursor: not-allowed;
 }
 
+textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #61dafb;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
 .status-message {
-  margin: 10px 0;
+  margin-top: 10px;
   padding: 10px;
   border-radius: 4px;
 }
 
 .response-content {
-  background-color: rgba(255, 255, 255, 0.05);
-  padding: 15px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #282c34;
+  padding: 20px;
   border-radius: 4px;
+  margin-top: 10px;
   text-align: left;
-  white-space: pre-wrap;
-}
-
-input[type="file"] {
-  margin: 10px 0;
-  padding: 10px;
-}
-
-.upload-section {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }

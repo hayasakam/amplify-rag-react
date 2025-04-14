@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Amplify, Auth } from 'aws-amplify';
+import { Amplify } from 'aws-amplify';
+import { signIn, signOut, getCurrentUser } from 'aws-amplify/auth';
+import { Authenticator } from '@aws-amplify/ui-react';
+import '@aws-amplify/ui-react/styles.css';
 import './App.css';
 
 // Amplifyの設定
@@ -33,7 +36,7 @@ function App() {
 
   const checkAuthState = async () => {
     try {
-      await Auth.currentAuthenticatedUser();
+      await getCurrentUser();
       setIsAuthenticated(true);
     } catch (error) {
       setIsAuthenticated(false);
@@ -42,9 +45,9 @@ function App() {
 
   const getAuthHeaders = async () => {
     try {
-      const session = await Auth.currentSession();
+      const { signInUserSession } = await getCurrentUser();
       return {
-        'Authorization': `Bearer ${session.getIdToken().getJwtToken()}`,
+        'Authorization': `Bearer ${signInUserSession.idToken.jwtToken}`,
         'Content-Type': 'application/json',
       };
     } catch (error) {
@@ -130,7 +133,7 @@ function App() {
 
   const handleSignIn = async () => {
     try {
-      await Auth.federatedSignIn();
+      await signIn();
     } catch (error) {
       console.error('ログインエラー:', error);
     }
@@ -138,78 +141,89 @@ function App() {
 
   const handleSignOut = async () => {
     try {
-      await Auth.signOut();
+      await signOut();
       setIsAuthenticated(false);
     } catch (error) {
       console.error('ログアウトエラー:', error);
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="App">
-        <header className="App-header">
-          <h1>RAG アプリケーション</h1>
-          <button onClick={handleSignIn}>ログイン</button>
-        </header>
-      </div>
-    );
-  }
-
   return (
-    <div className="App">
-      <header className="App-header">
-        <div className="auth-controls">
-          <button onClick={handleSignOut}>ログアウト</button>
+    <Authenticator>
+      {({ signOut }) => (
+        <div className="App">
+          <header className="App-header">
+            <div className="auth-controls">
+              <button onClick={handleSignOut}>ログアウト</button>
+            </div>
+            <h1>RAG アプリケーション</h1>
+            
+            <section className="upload-section">
+              <h2>ドキュメントのアップロード</h2>
+              <form onSubmit={handleFileUpload}>
+                <input
+                  type="file"
+                  accept=".txt,.doc,.docx,.pdf"
+                  onChange={(e) => setFile(e.target.files[0])}
+                  aria-label="ドキュメントを選択"
+                />
+                <button 
+                  type="submit" 
+                  disabled={isLoading}
+                  aria-busy={isLoading}
+                >
+                  アップロード
+                </button>
+              </form>
+              {uploadStatus && (
+                <p className="status-message" role="status">
+                  {uploadStatus}
+                </p>
+              )}
+            </section>
+
+            <section className="query-section">
+              <h2>質問</h2>
+              <form onSubmit={handleSubmit}>
+                <div>
+                  <textarea
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="質問を入力してください"
+                    rows="4"
+                    cols="50"
+                    disabled={isLoading}
+                    aria-label="質問入力"
+                  />
+                </div>
+                <div>
+                  <button 
+                    type="submit" 
+                    disabled={isLoading}
+                    aria-busy={isLoading}
+                  >
+                    {isLoading ? '処理中...' : '送信'}
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            {response && (
+              <section className="response-section">
+                <h2>回答:</h2>
+                <div 
+                  className="response-content"
+                  role="region"
+                  aria-live="polite"
+                >
+                  {response}
+                </div>
+              </section>
+            )}
+          </header>
         </div>
-        <h1>RAG アプリケーション</h1>
-        
-        <section className="upload-section">
-          <h2>ドキュメントのアップロード</h2>
-          <form onSubmit={handleFileUpload}>
-            <input
-              type="file"
-              accept=".txt,.doc,.docx,.pdf"
-              onChange={(e) => setFile(e.target.files[0])}
-            />
-            <button type="submit" disabled={isLoading}>
-              アップロード
-            </button>
-          </form>
-          {uploadStatus && <p className="status-message">{uploadStatus}</p>}
-        </section>
-
-        <section className="query-section">
-          <h2>質問</h2>
-          <form onSubmit={handleSubmit}>
-            <div>
-              <textarea
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="質問を入力してください"
-                rows="4"
-                cols="50"
-                disabled={isLoading}
-              />
-            </div>
-            <div>
-              <button type="submit" disabled={isLoading}>
-                {isLoading ? '処理中...' : '送信'}
-              </button>
-            </div>
-          </form>
-        </section>
-
-        {response && (
-          <section className="response-section">
-            <h2>回答:</h2>
-            <div className="response-content">
-              {response}
-            </div>
-          </section>
-        )}
-      </header>
-    </div>
+      )}
+    </Authenticator>
   );
 }
 
