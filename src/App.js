@@ -102,8 +102,7 @@ function App() {
         const response = await fetch(`${process.env.REACT_APP_API_ENDPOINT}/document`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ text }),
-          credentials: 'include',
+          body: JSON.stringify({ text })
         });
 
         if (!response.ok) {
@@ -149,8 +148,7 @@ function App() {
       const response = await fetch(`${process.env.REACT_APP_API_ENDPOINT}/query`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ query }),
-        credentials: 'include',
+        body: JSON.stringify({ query })
       });
 
       if (!response.ok) {
