@@ -1,5 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Amplify, Auth } from 'aws-amplify';
 import './App.css';
+
+// Amplifyの設定
+Amplify.configure({
+  Auth: {
+    region: process.env.REACT_APP_REGION,
+    userPoolId: process.env.REACT_APP_USER_POOL_ID,
+    userPoolWebClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID,
+  },
+  API: {
+    endpoints: [
+      {
+        name: 'ragApi',
+        endpoint: process.env.REACT_APP_API_ENDPOINT,
+      },
+    ],
+  },
+});
 
 function App() {
   const [query, setQuery] = useState('');
@@ -7,6 +25,32 @@ function App() {
   const [file, setFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    checkAuthState();
+  }, []);
+
+  const checkAuthState = async () => {
+    try {
+      await Auth.currentAuthenticatedUser();
+      setIsAuthenticated(true);
+    } catch (error) {
+      setIsAuthenticated(false);
+    }
+  };
+
+  const getAuthHeaders = async () => {
+    try {
+      const session = await Auth.currentSession();
+      return {
+        'Authorization': `Bearer ${session.getIdToken().getJwtToken()}`,
+        'Content-Type': 'application/json',
+      };
+    } catch (error) {
+      throw new Error('認証エラー');
+    }
+  };
 
   const handleFileUpload = async (e) => {
     e.preventDefault();
@@ -21,18 +65,27 @@ function App() {
     reader.onload = async (e) => {
       try {
         const text = e.target.result;
-        const response = await fetch('http://localhost:3001/document', {
+        const headers = await getAuthHeaders();
+        
+        const response = await fetch(`${process.env.REACT_APP_API_ENDPOINT}/document`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({ text }),
         });
+
+        if (!response.ok) {
+          throw new Error('APIエラー');
+        }
+
         const data = await response.json();
         setUploadStatus('ドキュメントが正常にアップロードされました');
       } catch (error) {
         console.error('Error:', error);
-        setUploadStatus('アップロード中にエラーが発生しました');
+        setUploadStatus(
+          error.message === '認証エラー' 
+            ? 'ログインが必要です'
+            : 'アップロード中にエラーが発生しました'
+        );
       } finally {
         setIsLoading(false);
       }
@@ -49,29 +102,68 @@ function App() {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/query', {
+      const headers = await getAuthHeaders();
+      
+      const response = await fetch(`${process.env.REACT_APP_API_ENDPOINT}/query`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ query }),
       });
+
+      if (!response.ok) {
+        throw new Error('APIエラー');
+      }
+
       const data = await response.json();
       setResponse(data.response);
     } catch (error) {
       console.error('Error:', error);
-      setResponse('エラーが発生しました');
+      setResponse(
+        error.message === '認証エラー'
+          ? 'ログインが必要です'
+          : 'エラーが発生しました'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleSignIn = async () => {
+    try {
+      await Auth.federatedSignIn();
+    } catch (error) {
+      console.error('ログインエラー:', error);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await Auth.signOut();
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('ログアウトエラー:', error);
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="App">
+        <header className="App-header">
+          <h1>RAG アプリケーション</h1>
+          <button onClick={handleSignIn}>ログイン</button>
+        </header>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <header className="App-header">
+        <div className="auth-controls">
+          <button onClick={handleSignOut}>ログアウト</button>
+        </div>
         <h1>RAG アプリケーション</h1>
         
-        {/* ドキュメントアップロードセクション */}
         <section className="upload-section">
           <h2>ドキュメントのアップロード</h2>
           <form onSubmit={handleFileUpload}>
@@ -87,7 +179,6 @@ function App() {
           {uploadStatus && <p className="status-message">{uploadStatus}</p>}
         </section>
 
-        {/* 質問セクション */}
         <section className="query-section">
           <h2>質問</h2>
           <form onSubmit={handleSubmit}>
@@ -109,7 +200,6 @@ function App() {
           </form>
         </section>
 
-        {/* 回答セクション */}
         {response && (
           <section className="response-section">
             <h2>回答:</h2>
