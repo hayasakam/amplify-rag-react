@@ -5,8 +5,16 @@ import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import './App.css';
 
+// デバッグ用のログ出力
+console.log('Environment Variables:', {
+  region: process.env.REACT_APP_REGION,
+  userPoolId: process.env.REACT_APP_USER_POOL_ID,
+  userPoolWebClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID,
+  apiEndpoint: process.env.REACT_APP_API_ENDPOINT
+});
+
 // Amplifyの設定
-Amplify.configure({
+const amplifyConfig = {
   Auth: {
     region: process.env.REACT_APP_REGION,
     userPoolId: process.env.REACT_APP_USER_POOL_ID,
@@ -20,7 +28,9 @@ Amplify.configure({
       },
     ],
   },
-});
+};
+
+Amplify.configure(amplifyConfig);
 
 function App() {
   const [query, setQuery] = useState('');
@@ -28,20 +38,6 @@ function App() {
   const [file, setFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    checkAuthState();
-  }, []);
-
-  const checkAuthState = async () => {
-    try {
-      await getCurrentUser();
-      setIsAuthenticated(true);
-    } catch (error) {
-      setIsAuthenticated(false);
-    }
-  };
 
   const getAuthHeaders = async () => {
     try {
@@ -80,7 +76,6 @@ function App() {
           throw new Error('APIエラー');
         }
 
-        const data = await response.json();
         setUploadStatus('ドキュメントが正常にアップロードされました');
       } catch (error) {
         console.error('Error:', error);
@@ -131,30 +126,16 @@ function App() {
     }
   };
 
-  const handleSignIn = async () => {
-    try {
-      await signIn();
-    } catch (error) {
-      console.error('ログインエラー:', error);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error('ログアウトエラー:', error);
-    }
-  };
-
   return (
     <Authenticator>
-      {({ signOut }) => (
+      {({ signOut, user }) => (
         <div className="App">
           <header className="App-header">
             <div className="auth-controls">
-              <button onClick={handleSignOut}>ログアウト</button>
+              <div className="user-info">
+                <span>ようこそ, {user.username}</span>
+                <button onClick={signOut}>ログアウト</button>
+              </div>
             </div>
             <h1>RAG アプリケーション</h1>
             
