@@ -36,11 +36,11 @@ const amplifyConfig = {
 };
 
 // デバッグ用のログ出力
-console.log('Amplify Config:', {
-  region: process.env.REACT_APP_REGION,
-  userPoolId: process.env.REACT_APP_USER_POOL_ID,
-  userPoolClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID,
-  apiEndpoint: process.env.REACT_APP_API_ENDPOINT
+console.log('Environment Variables:', {
+  API_ENDPOINT: process.env.REACT_APP_API_ENDPOINT,
+  REGION: process.env.REACT_APP_REGION,
+  USER_POOL_ID: process.env.REACT_APP_USER_POOL_ID,
+  USER_POOL_CLIENT_ID: process.env.REACT_APP_USER_POOL_CLIENT_ID
 });
 
 Amplify.configure(amplifyConfig);
@@ -55,8 +55,6 @@ function App() {
   const getAuthHeaders = async () => {
     try {
       const session = await fetchAuthSession();
-      
-      // デバッグログ
       console.log('Session obtained:', {
         hasTokens: !!session.tokens,
         hasIdToken: !!session.tokens?.idToken,
@@ -67,7 +65,6 @@ function App() {
       }
 
       const jwtToken = session.tokens.idToken.toString();
-
       return {
         'Authorization': `Bearer ${jwtToken}`,
         'Content-Type': 'application/json',
@@ -96,30 +93,37 @@ function App() {
       try {
         const text = e.target.result;
         const headers = await getAuthHeaders();
-        
-        console.log('Sending file upload request'); // デバッグログ
+        console.log('Sending file upload request with headers:', headers);
 
         const response = await fetch(`${process.env.REACT_APP_API_ENDPOINT}/document`, {
           method: 'POST',
-          headers,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
+          credentials: 'include',
           body: JSON.stringify({ text })
         });
 
+        const responseData = await response.text();
+        console.log('Raw upload response:', responseData);
+
         if (!response.ok) {
-          console.error('Upload Response status:', response.status);
-          const errorText = await response.text();
-          console.error('Upload Error details:', errorText);
-          throw new Error('APIエラー');
+          let errorMessage = 'アップロードエラー';
+          try {
+            const errorJson = JSON.parse(responseData);
+            errorMessage = errorJson.error || errorJson.message || 'Unknown error';
+          } catch (e) {
+            errorMessage = responseData || `HTTP Error: ${response.status}`;
+          }
+          throw new Error(errorMessage);
         }
 
         setUploadStatus('ドキュメントが正常にアップロードされました');
       } catch (error) {
-        console.error('Upload error details:', error);
-        setUploadStatus(
-          error.message === '認証エラー' 
-            ? 'ログインセッションが無効です。再度ログインしてください。'
-            : `アップロード中にエラーが発生しました: ${error.message}`
-        );
+        console.error('Upload error:', error);
+        setUploadStatus(`アップロード中にエラーが発生しました: ${error.message}`);
       } finally {
         setIsLoading(false);
       }
@@ -137,40 +141,38 @@ function App() {
     setIsLoading(true);
     try {
       const headers = await getAuthHeaders();
+      console.log('Making query request with headers:', headers);
       
-      // リクエストの詳細をログ出力
-      console.log('Making API request to:', process.env.REACT_APP_API_ENDPOINT);
-      console.log('Request headers:', {
-        ...headers,
-        Authorization: 'Bearer [REDACTED]'
-      });
-
       const response = await fetch(`${process.env.REACT_APP_API_ENDPOINT}/query`, {
         method: 'POST',
-        headers,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json',
+        },
+        mode: 'cors',
+        credentials: 'include',
         body: JSON.stringify({ query })
       });
 
+      const responseData = await response.text();
+      console.log('Raw query response:', responseData);
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        throw new Error(`APIエラー: ${response.status}`);
+        let errorMessage = 'APIエラー';
+        try {
+          const errorJson = JSON.parse(responseData);
+          errorMessage = errorJson.error || errorJson.message || 'Unknown error';
+        } catch (e) {
+          errorMessage = responseData || `HTTP Error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      console.log('API Response:', data);  // デバッグログ
+      const data = JSON.parse(responseData);
       setResponse(data.response);
     } catch (error) {
       console.error('Query error:', error);
-      setResponse(
-        error.message.includes('認証')
-          ? 'ログインセッションが無効です。再度ログインしてください。'
-          : `エラーが発生しました: ${error.message}`
-      );
+      setResponse(`エラーが発生しました: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +181,7 @@ function App() {
   return (
     <Authenticator>
       {({ signOut, user }) => {
-        console.log('Authenticated user:', user); // デバッグログ
+        console.log('Authenticated user:', user);
         return (
           <div className="App">
             <header className="App-header">
