@@ -1,24 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Amplify } from 'aws-amplify';
-import { signIn, signOut, getCurrentUser } from 'aws-amplify/auth';
+import { getCurrentUser } from 'aws-amplify/auth';
 import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import './App.css';
 
-// デバッグ用のログ出力
-console.log('Environment Variables:', {
-  region: process.env.REACT_APP_REGION,
-  userPoolId: process.env.REACT_APP_USER_POOL_ID,
-  userPoolWebClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID,
-  apiEndpoint: process.env.REACT_APP_API_ENDPOINT
-});
-
 // Amplifyの設定
 const amplifyConfig = {
   Auth: {
-    region: process.env.REACT_APP_REGION,
-    userPoolId: process.env.REACT_APP_USER_POOL_ID,
-    userPoolWebClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID,
+    Cognito: {
+      region: process.env.REACT_APP_REGION,
+      userPoolId: process.env.REACT_APP_USER_POOL_ID,
+      userPoolClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID,
+    }
   },
   API: {
     endpoints: [
@@ -29,6 +23,9 @@ const amplifyConfig = {
     ],
   },
 };
+
+// デバッグ用のログ出力
+console.log('Amplify Config:', amplifyConfig);
 
 Amplify.configure(amplifyConfig);
 
@@ -47,6 +44,7 @@ function App() {
         'Content-Type': 'application/json',
       };
     } catch (error) {
+      console.error('Auth error:', error);
       throw new Error('認証エラー');
     }
   };
@@ -78,7 +76,7 @@ function App() {
 
         setUploadStatus('ドキュメントが正常にアップロードされました');
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Upload error:', error);
         setUploadStatus(
           error.message === '認証エラー' 
             ? 'ログインが必要です'
@@ -115,7 +113,7 @@ function App() {
       const data = await response.json();
       setResponse(data.response);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Query error:', error);
       setResponse(
         error.message === '認証エラー'
           ? 'ログインが必要です'
